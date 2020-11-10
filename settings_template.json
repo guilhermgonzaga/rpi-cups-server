@@ -1,0 +1,19 @@
+{
+	"io": {
+		"in_file": "<used with python-daemon>",
+		"log_file": "<always used>",
+		"err_file": "<used with python-daemon>",
+		"out_file": "<used with python-daemon>"
+	},
+	"printer": {
+		"job_queue_cmd": ["lpstat", "-o", "<printer_name>"],
+		"gpio_pin": /* GPIO pin number */,
+		"control_pulse_duration_s": /* pulse length to turn printer on or off */
+	},
+	"poll_interval_s": /* number of seconds */,
+	"timer_timeout_s": /* number of seconds */,
+	"webhook": {
+		"url": "<used in notify_error>",
+		"params": { /* Params to be encoded in the URL */ }
+	}
+}
