@@ -22,4 +22,19 @@ Steps to start using this project:
 Obs.: `controller.py` is only needed in order to automate the printer, but
 if you want more flexibility out of it, try and get daemon.runner to work.
 
-There is code in the controller script that may notify the admin of errors through a webhook previously configured. It is not necessary for the basic functionality, but a nice addition that may be worth setting up.
+### Extras
+
+1. There is code in the controller script to notify the admin of errors through a webhook previously configured. It is not necessary, but a nice addition that may be worth setting up.
+
+1. It is very easy to set up `crontab` to start the controller at boot time. For that, run
+
+	```sh
+	crontab -e
+	```
+
+	and then insert the following lines in the opened file.
+
+	```sh
+	# Run printer controller at startup
+	@reboot cd /absolute/path/to/rpi-cups-server/ && ./start.sh
+	```
