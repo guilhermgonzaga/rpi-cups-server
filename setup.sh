@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Requires sudo
+# SPDX-License-Identifier: Unlicense
 #
 # Remember to edit the printer information (all on the following variables).
 #

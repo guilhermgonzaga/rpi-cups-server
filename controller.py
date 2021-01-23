@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Unlicense
 """
 Listen to the CUPS active job queue and control the printer accordingly.
 If there are jobs, turn the printer on;
