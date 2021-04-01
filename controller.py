@@ -35,7 +35,7 @@ class App:
 		self.printer = Printer(printer_interface, printer_settings['control_pulse_duration_s'])
 		self.timer = Timer(self.settings['timer_timeout_s'])
 
-		# daemon.runner related settings
+		# Settings related to daemon.runner
 		# io_settings = self.settings['io']
 		# self.stdin_path = io_settings['in_file']
 		# self.stderr_path = io_settings['err_file']
@@ -52,13 +52,15 @@ class App:
 
 
 	def notify_error(self, error):
-		""" Notify owner of failure via HTTP GET. """
-		webhook = self.settings['webhook']
-		webhook['params']['mensagem'] += str(error)
-
-		print('Notifying via webhook... ', end='')
-		res = requests.get(webhook['url'], params=webhook['params'])
-		print('response:', res.text)
+		""" Notify of failure via HTTP GET. """
+		if 'webhook' in self.settings:
+			# The code in this block is specific to the author's setup.
+			# Change it to your needs.
+			webhook = self.settings['webhook']
+			webhook['params']['mensagem'] += str(error)
+			print('Notifying via webhook... ', end='')
+			res = requests.get(webhook['url'], params=webhook['params'])
+			print('response:', res.text)
 
 
 	def _update(self, num_jobs):
@@ -101,7 +103,6 @@ class App:
 				raise
 
 			self._update(num_jobs)
-
 			time.sleep(poll_interval_s)
 
 
