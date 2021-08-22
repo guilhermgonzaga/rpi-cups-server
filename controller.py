@@ -57,10 +57,12 @@ class App:
 			# The code in this block is specific to the author's setup.
 			# Change it to your needs.
 			webhook = self.settings['webhook']
-			webhook['params']['mensagem'] += str(error)
-			print('Notifying via webhook... ', end='')
+			webhook['params']['mensagem'] = str(error)
+			if __debug__:
+				print('Notifying via webhook... ', end='')
 			res = requests.get(webhook['url'], params=webhook['params'])
-			print('response:', res.text)
+			if __debug__:
+				print('response:', res.text)
 
 
 	def _update(self, num_jobs):
@@ -94,16 +96,15 @@ class App:
 		poll_interval_s = self.settings['poll_interval_s']
 
 		while True:
+			time.sleep(poll_interval_s)
 			try:
 				# Command returns one job per line, so count them
 				num_jobs = subprocess.check_output(job_queue_cmd, text=True).count('\n')
 			except Exception as e:
 				self.log_error(e)
 				self.notify_error(e)
-				raise
-
-			self._update(num_jobs)
-			time.sleep(poll_interval_s)
+			else:
+				self._update(num_jobs)
 
 
 class Printer:
