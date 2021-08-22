@@ -1,9 +1,9 @@
 {
 	"io": {
 		"in_file": "<used with python-daemon>",
-		"log_file": "<always used>",
+		"out_file": "<used with python-daemon>",
 		"err_file": "<used with python-daemon>",
-		"out_file": "<used with python-daemon>"
+		"log_file": "<always used>"
 	},
 	"printer": {
 		"job_queue_cmd": ["lpstat", "-o", "<printer_name>"],
