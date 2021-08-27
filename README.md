@@ -9,7 +9,6 @@ The script will poll the CUPS active job queue and control the printer according
 The code is focused on a specific printer model (HP P1006) running on
 a Raspberry Pi, so tailor it to your needs.
 
-
 ## Get started
 
 First of all, figure out an easy way to interface with your printer.
@@ -19,7 +18,7 @@ Steps to start using this project:
 1. Create `settings.json` from `settings_template.json` with your preferences.
 1. Adapt `setup.sh` and `controller.py` to your particular printer model.
 1. Run `setup.sh` to install dependencies and setup CUPS.
-1. Start the printer controller with `run.sh`
+1. Start the printer controller with `start.sh`
 
 Obs.: `controller.py` is only needed in order to automate the printer, but
 if you want more flexibility out of it, try and get daemon.runner to work.
