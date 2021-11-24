@@ -1,19 +1,24 @@
 {
 	"io": {
-		"in_file": "<used with python-daemon>",
-		"out_file": "<used with python-daemon>",
-		"err_file": "<used with python-daemon>",
-		"log_file": "<always used>"
+		"in_file": "<FILENAME> used if run with python-daemon",
+		"out_file": "<FILENAME> used if run with python-daemon",
+		"err_file": "<FILENAME> used if run with python-daemon",
+		"log_file": "<FILENAME> file to log errors"
+	},
+	"cups": {
+		"queue_cmd": ["lpstat", "-o", "<PRINTER>"],
+		/* This does not need to be changed. */
+		"status_cmd": ["systemctl", "is-active", "--quiet", "cups"]
 	},
 	"printer": {
-		"job_queue_cmd": ["lpstat", "-o", "<printer_name>"],
-		"gpio_pin": /* GPIO pin number */,
-		"control_pulse_duration_s": /* pulse length to turn printer on or off */
+		"gpio_pin": "<NUMBER> GPIO pin to control printer (BCM numbering)",
+		"control_pulse_length_s": "<NUMBER> pulse length in seconds to control printer"
 	},
-	"poll_interval_s": /* number of seconds */,
-	"timer_timeout_s": /* number of seconds */,
+	"poll_interval_s": "<NUMBER> time in seconds between CUPS queue polling",
+	"wait_timeout_s": "<NUMBER> time in seconds to wait for new jobs",
 	"webhook": {
-		"url": "<used in notify_error>",
-		"params": { /* Params to be encoded in the URL */ }
+		/* Used only in notify_error(). You may delete this key to disable it. */
+		"url": "<URL> on error, a GET request will be sent with the parameters below",
+		"params": { /* Params to be encoded in the URL. */ }
 	}
 }

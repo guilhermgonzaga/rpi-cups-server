@@ -5,10 +5,10 @@ Listen to the CUPS active job queue and control the printer accordingly.
 If there are jobs, turn the printer on;
 After a period of inactivity, turn the printer off.
 The printer is turned on or off with a high pulse on the pin
-specified in `settings.json`.
+specified in the settings file.
 
 If you get daemon.runner to work, remember to use `python -O` to
-avoid unnecessary atempts to print debug messages.
+avoid unnecessary attempts to print debug messages.
 
 This code is focused on a specific printer model (HP P1006) running on
 a Raspberry Pi, so tailor it to your needs.
@@ -17,7 +17,8 @@ a Raspberry Pi, so tailor it to your needs.
 import json
 import time
 import signal
-import subprocess
+import subprocess as sp
+import sys
 import requests
 # from daemon import runner
 from gpiozero import DigitalOutputDevice
@@ -28,41 +29,22 @@ class App:
 	Main app, needed for daemon package.
 	"""
 
-	def __init__(self):
-		self.settings = json.load(open('settings.json'))
-		printer_settings = self.settings['printer']
-		printer_interface = DigitalOutputDevice(printer_settings['gpio_pin'])
-		self.printer = Printer(printer_interface, printer_settings['control_pulse_duration_s'])
-		self.timer = Timer(self.settings['timer_timeout_s'])
+	def __init__(self, settings_file):
+		with open(settings_file) as settings_json:
+			settings_dict = json.load(settings_json)
+			self.settings = settings_dict
+			printer_settings = self.settings['printer']
+			printer_interface = DigitalOutputDevice(printer_settings['gpio_pin'])
+			self.printer = Printer(printer_interface, printer_settings['control_pulse_length_s'])
+			self.timer = Timer(self.settings['wait_timeout_s'])
 
-		# Settings related to daemon.runner
-		# io_settings = self.settings['io']
-		# self.stdin_path = io_settings['in_file']
-		# self.stderr_path = io_settings['err_file']
-		# self.stdout_path = io_settings['out_file']
-		# self.pidfile_path = '/tmp/printer_controller.pid'
-		# self.pidfile_timeout = 5
-
-
-	def log_error(self, error):
-		""" May be used to log any error on a file specified in settings.json. """
-		with open(self.settings['io']['log_file'], 'a') as log:
-			lt = time.localtime()
-			print(time.strftime('%d/%m/%y %H:%M:%S', lt), error, file=log)
-
-
-	def notify_error(self, error):
-		""" Notify of failure via HTTP GET. """
-		if 'webhook' in self.settings:
-			# The code in this block is specific to the author's setup.
-			# Change it to your needs.
-			webhook = self.settings['webhook']
-			webhook['params']['mensagem'] = str(error)
-			if __debug__:
-				print('Notifying via webhook... ', end='')
-			res = requests.get(webhook['url'], params=webhook['params'])
-			if __debug__:
-				print('response:', res.text)
+			# Settings related to daemon.runner
+			# io_settings = self.settings['io']
+			# self.stdin_path = io_settings['in_file']
+			# self.stderr_path = io_settings['err_file']
+			# self.stdout_path = io_settings['out_file']
+			# self.pidfile_path = '/tmp/printer_controller.pid'
+			# self.pidfile_timeout = 5
 
 
 	def _update(self, num_jobs):
@@ -90,19 +72,45 @@ class App:
 					print(f'Got {num_jobs} job(s), timeout stopped')
 
 
+	def log_error(self, error):
+		""" May be used to log any error on a file specified in settings.json. """
+		with open(self.settings['io']['log_file'], 'a') as log:
+			lt = time.localtime()
+			print(time.strftime('%d/%m/%y %H:%M:%S', lt), error, file=log)
+
+
+	def notify_error(self, error):
+		""" Notify of failure via HTTP GET. """
+		if 'webhook' in self.settings:
+			# The code in this block is specific to the author's setup.
+			# Change it to your needs.
+			webhook = self.settings['webhook']
+			webhook['params']['mensagem'] = str(error)
+			if __debug__:
+				print('Notifying via webhook... ', end='')
+			res = requests.get(webhook['url'], params=webhook['params'])
+			if __debug__:
+				print('response:', res.text)
+
+
 	def run(self):
 		""" Check for jobs and control timeout. """
-		job_queue_cmd = self.settings['printer']['job_queue_cmd']
+		cups_queue_cmd = self.settings['cups']['queue_cmd']
 		poll_interval_s = self.settings['poll_interval_s']
 
 		while True:
 			time.sleep(poll_interval_s)
 			try:
-				# Command returns one job per line, so count them
-				num_jobs = subprocess.check_output(job_queue_cmd, text=True).count('\n')
+				if sp.run(self.settings['cups']['status_cmd'], check=False).returncode == 0:
+					# If CUPS service is running, check for active jobs in printer queue
+					# Queue lists one job per line, so count them
+					num_jobs = sp.check_output(cups_queue_cmd, text=True).count('\n')
+			except sp.CalledProcessError as cpe:
+				self.log_error(cpe)
+				self.notify_error(cpe)
 			except Exception as e:
-				self.log_error(e)
-				self.notify_error(e)
+				self.log_error(f'(BROAD EXCEPTION) {e}')
+				self.notify_error(f'(BROAD EXCEPTION) {e}')
 			else:
 				self._update(num_jobs)
 
@@ -116,11 +124,19 @@ class Printer:
 	OFF = 1
 	ON = 2
 
-	def __init__(self, interface: DigitalOutputDevice, control_pulse_duration_s):
-		self._pulse_duration = control_pulse_duration_s
+	def __init__(self, interface: DigitalOutputDevice, pulse_length_s):
+		self._pulse_length = pulse_length_s
 		self._pin = interface
 		self._pin.off()
 		self.state = Printer.OFF
+
+
+	def _update(self, state):
+		""" Control printer to reflect it's state (on or off). """
+		if self.state != state:
+			# Make a single active high pulse
+			self._pin.blink(on_time=self._pulse_length, off_time=0, n=1, background=False)
+			self.state = state
 
 
 	def off(self):
@@ -129,14 +145,6 @@ class Printer:
 
 	def on(self):
 		self._update(Printer.ON)
-
-
-	def _update(self, state):
-		""" Control printer to reflect it's state (on or off). """
-		if self.state != state:
-			# Make a single active high pulse
-			self._pin.blink(on_time=self._pulse_duration, off_time=0, n=1, background=False)
-			self.state = state
 
 
 class Timer:
@@ -156,6 +164,13 @@ class Timer:
 		self.state = Timer.UNSET
 
 
+	def _make_handler(self):
+		""" Link handler to the object state in order to track timers. """
+		def alarm_handler(_signum, _frame):
+			self.state = Timer.FIRED
+		return alarm_handler
+
+
 	def set(self):
 		"""
 		Start timeout to wait for more jobs by keeping the printer on.
@@ -172,15 +187,9 @@ class Timer:
 		self.state = Timer.UNSET
 
 
-	def _make_handler(self):
-		""" Link handler to the object state in order to track timers. """
-		def alarm_handler(signum, frame):
-			self.state = Timer.FIRED
-		return alarm_handler
-
-
 if __name__ == '__main__':
-	app = App()
+	settings = sys.argv[1] if len(sys.argv) == 2 else 'settings.json'
+	app = App(settings)
 	app.run()
 	# daemon_runner = runner.DaemonRunner(app)
 	# daemon_runner.do_action()
