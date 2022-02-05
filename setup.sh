@@ -2,17 +2,21 @@
 # Requires sudo
 # SPDX-License-Identifier: Unlicense
 #
-# Remember to edit the printer information (the following variables).
+# Whenever the configuration file /etc/cups/cupsd.conf is changed,
+# the CUPS server must be restarted, for which this command may be used:
+# systemctl restart cups.service
 #
-# Whenever you make changes to the /etc/cups/cupsd.conf configuration
-# file, you'll need to restart the CUPS server by typing the following
-# command at a terminal prompt: `sudo systemctl restart cups.service`
+# Remember to update the following information (variables).
 
 # Name of the CUPS queue/class
 printerQueue=HP_LaserJet_P1006
-
 # User to append to lpadmin group in order to have admin rights on CUPS
 user=pi
+
+# Exit immediately if a command exits with a non-zero status
+# set -o errexit
+# Treat unset variables as errors when substituting
+set -o nounset
 
 ### DEPENDENCIES
 
