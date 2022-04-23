@@ -15,36 +15,37 @@ a Raspberry Pi, so tailor it to your needs.
 """
 
 import json
-import time
 import signal
 import subprocess as sp
 import sys
+import time
 import requests
-# from daemon import runner
 from gpiozero import DigitalOutputDevice
 
 
 class App:
 	"""
-	Main app, needed for daemon package.
+	Main app class
 	"""
 
-	def __init__(self, settings_file):
-		with open(settings_file) as settings_json:
-			settings_dict = json.load(settings_json)
-			self.settings = settings_dict
+	def __init__(self, settings_filename):
+		try:
+			settings_file = open(settings_filename)
+			self.settings = json.load(settings_file)
+			settings_file.close()
+		except OSError as ose:
+			if __debug__:
+				print(ose, file=sys.stderr)
+			sys.exit(ose.errno)
+		except Exception as e:
+			if __debug__:
+				print(f'Bad settings file: {e}', file=sys.stderr)
+			sys.exit(1)
+		else:
 			printer_settings = self.settings['printer']
 			printer_interface = DigitalOutputDevice(printer_settings['gpio_pin'])
 			self.printer = Printer(printer_interface, printer_settings['control_pulse_length_s'])
-			self.timer = Timer(self.settings['wait_timeout_s'])
-
-			# Settings related to daemon.runner
-			# io_settings = self.settings['io']
-			# self.stdin_path = io_settings['in_file']
-			# self.stderr_path = io_settings['err_file']
-			# self.stdout_path = io_settings['out_file']
-			# self.pidfile_path = '/tmp/printer_controller.pid'
-			# self.pidfile_timeout = 5
+			self.timer = Timer(self.settings['printer_timeout_s'])
 
 
 	def _update(self, num_jobs):
@@ -73,10 +74,10 @@ class App:
 
 
 	def log_error(self, error):
-		""" May be used to log any error on a file specified in settings.json. """
+		""" May be used to log any error on a file specified in settings. """
+		lt = time.localtime()
 		with open(self.settings['io']['log_file'], 'a') as log:
-			lt = time.localtime()
-			print(time.strftime('%d/%m/%y %H:%M:%S', lt), error, file=log)
+			print(time.strftime('%y/%m/%d %H:%M:%S', lt), error, file=log)
 
 
 	def notify_error(self, error):
@@ -188,8 +189,6 @@ class Timer:
 
 
 if __name__ == '__main__':
-	settings = sys.argv[1] if len(sys.argv) == 2 else 'settings.json'
-	app = App(settings)
+	settings_fname = sys.argv[1] if len(sys.argv) == 2 else 'settings.json'
+	app = App(settings_fname)
 	app.run()
-	# daemon_runner = runner.DaemonRunner(app)
-	# daemon_runner.do_action()

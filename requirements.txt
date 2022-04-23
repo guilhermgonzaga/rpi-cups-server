@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: Unlicense
 
-#python-daemon
-
 # gpiozero may use RPi.GPIO, pigpio or rpio as "pin factories", which
 # are selected by the environment variable GPIOZERO_PIN_FACTORY.
-# pigpio
 RPi.GPIO
 gpiozero

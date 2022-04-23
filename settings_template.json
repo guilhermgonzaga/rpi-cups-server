@@ -1,8 +1,5 @@
 {
 	"io": {
-		"in_file": "<FILENAME> used if run with python-daemon",
-		"out_file": "<FILENAME> used if run with python-daemon",
-		"err_file": "<FILENAME> used if run with python-daemon",
 		"log_file": "<FILENAME> file to log errors"
 	},
 	"cups": {
@@ -15,9 +12,9 @@
 		"control_pulse_length_s": "<NUMBER> pulse length in seconds to control printer"
 	},
 	"poll_interval_s": "<NUMBER> time in seconds between CUPS queue polling",
-	"wait_timeout_s": "<NUMBER> time in seconds to wait for new jobs",
+	"printer_timeout_s": "<NUMBER> time in seconds to wait for new jobs",
+	/* Used only in notify_error(). You may delete this key to disable it. */
 	"webhook": {
-		/* Used only in notify_error(). You may delete this key to disable it. */
 		"url": "<URL> on error, a GET request will be sent with the parameters below",
 		"params": { /* Params to be encoded in the URL. */ }
 	}
