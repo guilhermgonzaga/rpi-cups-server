@@ -1,21 +1,14 @@
 {
-	"io": {
-		"log_file": "<FILENAME> file to log errors"
-	},
-	"cups": {
-		"queue_cmd": ["lpstat", "-o", "<PRINTER>"],
-		/* This does not need to be changed. */
-		"status_cmd": ["systemctl", "is-active", "--quiet", "cups"]
-	},
+	"log_file": "<FILENAME> file to log errors",
+	"poll_interval_s": "<NUMBER> time in seconds between CUPS queue polling",
 	"printer": {
 		"gpio_pin": "<NUMBER> GPIO pin to control printer (BCM numbering)",
-		"control_pulse_length_s": "<NUMBER> pulse length in seconds to control printer"
+		"control_pulse_length_s": "<NUMBER> pulse length in seconds to control printer",
+		"timeout_s": "<NUMBER> time in seconds to wait for new jobs"
 	},
-	"poll_interval_s": "<NUMBER> time in seconds between CUPS queue polling",
-	"printer_timeout_s": "<NUMBER> time in seconds to wait for new jobs",
-	/* Used only in notify_error(). You may delete this key to disable it. */
+	/* Used only in notify(). Deleting this key will disable that function. */
 	"webhook": {
-		"url": "<URL> on error, a GET request will be sent with the parameters below",
+		"url": "<URL> a GET request will be sent by notify() with the parameters below",
 		"params": { /* Params to be encoded in the URL. */ }
 	}
 }

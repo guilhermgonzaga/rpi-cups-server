@@ -12,13 +12,18 @@ avoid unnecessary attempts to print debug messages.
 
 This code is focused on a specific printer model (HP P1006) running on
 a Raspberry Pi, so tailor it to your needs.
+
+Note: the pycups documentation is quite poor, so the API was taken from
+      github.com/OpenPrinting/pycups/blob/v2.0.1/cupsmodule.c#L605
+      github.com/OpenPrinting/pycups/blob/v2.0.1/cupsconnection.c#L4745
 """
 
 import json
 import signal
-import subprocess as sp
 import sys
 import time
+
+import cups
 import requests
 from gpiozero import DigitalOutputDevice
 
@@ -33,25 +38,31 @@ class App:
 			settings_file = open(settings_filename)
 			self.settings = json.load(settings_file)
 			settings_file.close()
+			self.cupsc = cups.Connection()
+		except json.decoder.JSONDecodeError as jde:
+			if __debug__:
+				print(f'Bad settings file: {jde}', file=sys.stderr)
+			sys.exit(1)
 		except OSError as ose:
 			if __debug__:
 				print(ose, file=sys.stderr)
 			sys.exit(ose.errno)
-		except Exception as e:
+		except RuntimeError as re:
 			if __debug__:
-				print(f'Bad settings file: {e}', file=sys.stderr)
+				print(f'CUPS unavailable: {re}', file=sys.stderr)
+			self.log(f'CUPS unavailable: {re}')
 			sys.exit(1)
 		else:
 			printer_settings = self.settings['printer']
 			printer_interface = DigitalOutputDevice(printer_settings['gpio_pin'])
 			self.printer = Printer(printer_interface, printer_settings['control_pulse_length_s'])
-			self.timer = Timer(self.settings['printer_timeout_s'])
+			self.timer = Timer(printer_settings['timeout_s'])
 
 
-	def _update(self, num_jobs):
+	def _update(self, job_count):
 		""" Update tracked timer and printer states as a state machine. """
 
-		if num_jobs == 0:
+		if job_count == 0:
 			if self.timer.state == Timer.FIRED:
 				self.timer.unset()
 				self.printer.off()
@@ -66,27 +77,30 @@ class App:
 				if self.printer.state != Printer.ON:
 					self.printer.on()
 				if __debug__:
-					print(f'Got {num_jobs} job(s), printer on')
+					print(f'Got {job_count} job(s), printer on')
 			else:
 				self.timer.unset()
 				if __debug__:
-					print(f'Got {num_jobs} job(s), timeout stopped')
+					print(f'Got {job_count} job(s), timeout stopped')
 
 
-	def log_error(self, error):
-		""" May be used to log any error on a file specified in settings. """
+	def log(self, message):
+		""" May be used to log any message on a file specified in settings. """
 		lt = time.localtime()
-		with open(self.settings['io']['log_file'], 'a') as log:
-			print(time.strftime('%y/%m/%d %H:%M:%S', lt), error, file=log)
+		with open(self.settings['log_file'], 'a') as log:
+			print(time.strftime('%Y/%m/%d %H:%M:%S ', lt), message, file=log)
 
 
-	def notify_error(self, error):
-		""" Notify of failure via HTTP GET. """
+	def notify(self, message):
+		"""
+		Send a message through GET request to a webhook as a way to notify.
+		The URL and parameters are specified in settings.
+		This code is very specific to the author's needs. You may delete
+		the 'webhook' entry in settings to disable this function easily.
+		"""
 		if 'webhook' in self.settings:
-			# The code in this block is specific to the author's setup.
-			# Change it to your needs.
 			webhook = self.settings['webhook']
-			webhook['params']['mensagem'] = str(error)
+			webhook['params']['mensagem'] = str(message)
 			if __debug__:
 				print('Notifying via webhook... ', end='')
 			res = requests.get(webhook['url'], params=webhook['params'])
@@ -96,24 +110,29 @@ class App:
 
 	def run(self):
 		""" Check for jobs and control timeout. """
-		cups_queue_cmd = self.settings['cups']['queue_cmd']
 		poll_interval_s = self.settings['poll_interval_s']
 
 		while True:
 			time.sleep(poll_interval_s)
+
 			try:
-				if sp.run(self.settings['cups']['status_cmd'], check=False).returncode == 0:
-					# If CUPS service is running, check for active jobs in printer queue
-					# Queue lists one job per line, so count them
-					num_jobs = sp.check_output(cups_queue_cmd, text=True).count('\n')
-			except sp.CalledProcessError as cpe:
-				self.log_error(cpe)
-				self.notify_error(cpe)
-			except Exception as e:
-				self.log_error(f'(BROAD EXCEPTION) {e}')
-				self.notify_error(f'(BROAD EXCEPTION) {e}')
+				""" Note:
+				This returns all jobs from all queues.
+				It's ok if there is only one printer in cups. Otherwise, use:
+				.getPrinterAttributes(<printer>, requested_attributes=['queued-job-count'])
+				"""
+				job_count = len(self.cupsc.getJobs())
+
+			# TODO: avoid endless notification
+			except cups.IPPError as ce:
+				status, description = ce.args
+				self.log(f'CUPS IPP Error: {description} ({status})')
+				self.notify(f'CUPS IPP Error: {description} ({status})')
+			except RuntimeError as re:
+				self.log(f'Runtime Error: {re}')
+				self.notify(f'Runtime Error: {re}')
 			else:
-				self._update(num_jobs)
+				self._update(job_count)
 
 
 class Printer:

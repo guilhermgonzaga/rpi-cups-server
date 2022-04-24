@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Unlicense
 
+pycups
+
 # gpiozero may use RPi.GPIO, pigpio or rpio as "pin factories", which
 # are selected by the environment variable GPIOZERO_PIN_FACTORY.
 RPi.GPIO
