@@ -1,7 +1,10 @@
 {
+	"cups_queue": "<STRING> CUPS queue associated with the printer",
 	"log_file": "<FILENAME> file to log errors",
 	"poll_interval_s": "<NUMBER> time in seconds between CUPS queue polling",
 	"printer": {
+		/* You may obtain these ids through lsusb */
+		"id": ["<NUMBER> idVendor", "<NUMBER> idProduct"],
 		"gpio_pin": "<NUMBER> GPIO pin to control printer (BCM numbering)",
 		"control_pulse_length_s": "<NUMBER> pulse length in seconds to control printer",
 		"timeout_s": "<NUMBER> time in seconds to wait for new jobs"

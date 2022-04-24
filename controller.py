@@ -25,7 +25,8 @@ import time
 
 import cups
 import requests
-from gpiozero import DigitalOutputDevice
+import usb.core
+from gpiozero import DigitalOutputDevice as DigitalPin
 
 
 class App:
@@ -38,10 +39,23 @@ class App:
 			settings_file = open(settings_filename)
 			self.settings = json.load(settings_file)
 			settings_file.close()
+
+			printer = self.settings['printer']
+			printer_intfc = DigitalPin(printer['gpio_pin'])
+			self.printer = Printer(printer_intfc, printer['id'], printer['control_pulse_length_s'])
+			self.timer = Timer(printer['timeout_s'])
+
 			self.cupsc = cups.Connection()
+			if self.printer.state() == Printer.OFF:
+				self.cupsc.disablePrinter(self.settings['cups_queue'])
+
 		except json.decoder.JSONDecodeError as jde:
 			if __debug__:
 				print(f'Bad settings file: {jde}', file=sys.stderr)
+			sys.exit(1)
+		except usb.core.NoBackendError as nbe:
+			if __debug__:
+				print(f'PyUSB: {nbe}', file=sys.stderr)
 			sys.exit(1)
 		except OSError as ose:
 			if __debug__:
@@ -52,36 +66,41 @@ class App:
 				print(f'CUPS unavailable: {re}', file=sys.stderr)
 			self.log(f'CUPS unavailable: {re}')
 			sys.exit(1)
-		else:
-			printer_settings = self.settings['printer']
-			printer_interface = DigitalOutputDevice(printer_settings['gpio_pin'])
-			self.printer = Printer(printer_interface, printer_settings['control_pulse_length_s'])
-			self.timer = Timer(printer_settings['timeout_s'])
 
 
-	def _update(self, job_count):
+	def _queue_disabled(self) -> bool:
+		""" Query printer queue state; 5 means destination stopped. """
+		return 5 == self.cupsc.getPrinterAttributes(
+			self.settings['cups_queue'],
+			requested_attributes=['printer-state']
+		)['printer-state']
+
+
+	def _update(self, job_count, printer_state):
 		""" Update tracked timer and printer states as a state machine. """
 
 		if job_count == 0:
 			if self.timer.state == Timer.FIRED:
 				self.timer.unset()
+				self.cupsc.disablePrinter(self.settings['cups_queue'])
 				self.printer.off()
 				if __debug__:
-					print('Timeout ended, printer off')
-			elif self.timer.state == Timer.UNSET and self.printer.state == Printer.ON:
+					print('No jobs, timeout reached, printer off, queue disabled')
+			elif self.timer.state == Timer.UNSET and printer_state != Printer.OFF:
 				self.timer.set()
 				if __debug__:
 					print('Jobs done, timeout started')
 		else:
-			if self.timer.state == Timer.UNSET:
-				if self.printer.state != Printer.ON:
-					self.printer.on()
+			self.timer.unset()
+			if printer_state != Printer.READY:
+				self.printer.on()
 				if __debug__:
-					print(f'Got {job_count} job(s), printer on')
+					print(f'Got {job_count} job(s), no timeout, printer on')
 			else:
-				self.timer.unset()
+				if self._queue_disabled():
+					self.cupsc.enablePrinter(self.settings['cups_queue'])
 				if __debug__:
-					print(f'Got {job_count} job(s), timeout stopped')
+					print(f'Got {job_count} job(s), no timeout, printer on, queue enabled')
 
 
 	def log(self, message):
@@ -118,10 +137,11 @@ class App:
 			try:
 				""" Note:
 				This returns all jobs from all queues.
-				It's ok if there is only one printer in cups. Otherwise, use:
+				It works if there is only one printer in cups. Otherwise, use:
 				.getPrinterAttributes(<printer>, requested_attributes=['queued-job-count'])
 				"""
 				job_count = len(self.cupsc.getJobs())
+				printer_state = self.printer.state()
 
 			# TODO: avoid endless notification
 			except cups.IPPError as ce:
@@ -132,7 +152,7 @@ class App:
 				self.log(f'Runtime Error: {re}')
 				self.notify(f'Runtime Error: {re}')
 			else:
-				self._update(job_count)
+				self._update(job_count, printer_state)
 
 
 class Printer:
@@ -143,28 +163,46 @@ class Printer:
 	# Enum; possible states of the printer.
 	OFF = 1
 	ON = 2
+	READY = 3
 
-	def __init__(self, interface: DigitalOutputDevice, pulse_length_s):
+	def __init__(self, intfc: DigitalPin, id_usb: (int, int), pulse_length_s):
+		self._id = id_usb
 		self._pulse_length = pulse_length_s
-		self._pin = interface
-		self._pin.off()
-		self.state = Printer.OFF
+		self._pin = intfc
+
+		self._state = Printer.OFF
+		self._state = self.state()
 
 
-	def _update(self, state):
-		""" Control printer to reflect it's state (on or off). """
-		if self.state != state:
-			# Make a single active high pulse
+	def _control(self, state):
+		"""
+		Control printer to reflect it's state (on or off).
+		The READY state must not be set manually.
+		"""
+		if __debug__:
+			assert state != Printer.READY
+
+		if self._state != state:
+			# Single pulse to turn on/off printer
 			self._pin.blink(on_time=self._pulse_length, off_time=0, n=1, background=False)
-			self.state = state
+			self._state = state
+
+
+	def state(self):
+		""" Query printer state through pyusb. """
+
+		if usb.core.find(idVendor=self._id[0], idProduct=self._id[1]):
+			self._state = Printer.READY
+
+		return self._state
 
 
 	def off(self):
-		self._update(Printer.OFF)
+		self._control(Printer.OFF)
 
 
 	def on(self):
-		self._update(Printer.ON)
+		self._control(Printer.ON)
 
 
 class Timer:

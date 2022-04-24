@@ -21,8 +21,6 @@ Steps to start using this project:
 
 - Adapt `setup.sh` and `controller.py` to your particular printer model
 
-	The controller script is needed in order to automate the printer. If you want to run it as a service, try to get `daemon.runner` to work. If you succeed, remember to run it with `python -O` to avoid unnecessary commands (those guarded with `__debug__` clauses).
-
 - Install dependencies and setup CUPS with `setup.sh`
 
 - Start the printer controller with `start.sh`
