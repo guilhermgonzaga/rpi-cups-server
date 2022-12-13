@@ -2,7 +2,7 @@
 
 # rpi-cups-server
 
-Raspberry Pi enabled CUPS print server that turns the printer on when a new job arrives and off after a period of inactivity.
+Raspberry Pi powered CUPS print server that turns the printer on when a new job arrives and off after a period of inactivity.
 
 The script will poll the CUPS active job queue and control the printer accordingly: if there are jobs, turn the printer on; After a period of inactivity, turn the printer off. As is, the printer is controlled with a high pulse on the GPIO pin specified in the settings file. This pulse may be used e.g. to fake a on/off button press with an optocoupler (modding required).
 

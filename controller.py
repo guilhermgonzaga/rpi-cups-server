@@ -4,14 +4,13 @@
 Listen to the CUPS active job queue and control the printer accordingly.
 If there are jobs, turn the printer on;
 After a period of inactivity, turn the printer off.
-The printer is turned on or off with a high pulse on the pin
-specified in the settings file.
 
-If you get daemon.runner to work, remember to use `python -O` to
-avoid unnecessary attempts to print debug messages.
+This script may be run with `python -O` to avoid unnecessary attempts to
+print debug messages. See `start.sh` for an example.
 
 This code is focused on a specific printer model (HP P1006) running on
 a Raspberry Pi, so tailor it to your needs.
+The printer was modified to turn on or off via a high pulse from the Pi.
 
 Note: the pycups documentation is quite poor, so the API was taken from
       github.com/OpenPrinting/pycups/blob/v2.0.1/cupsmodule.c#L605
