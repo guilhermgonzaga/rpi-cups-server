@@ -145,8 +145,8 @@ class App:
 			# TODO: avoid endless notification
 			except cups.IPPError as ce:
 				status, description = ce.args
-				self.log(f'CUPS IPP Error: {description} ({status})')
-				self.notify(f'CUPS IPP Error: {description} ({status})')
+				self.log(f'CUPS IPP Error: {status} {description}')
+				self.notify(f'CUPS IPP Error: {status} {description}')
 			except RuntimeError as re:
 				self.log(f'Runtime Error: {re}')
 				self.notify(f'Runtime Error: {re}')
