@@ -21,7 +21,7 @@ set -o nounset
 ### DEPENDENCIES
 
 apt update
-apt install -y cups hplip printer-driver-hpcups
+apt install -y cups libcups2-dev hplip printer-driver-hpcups
 
 pip3 install -r requirements.txt
 
