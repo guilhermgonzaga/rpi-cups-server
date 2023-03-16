@@ -26,6 +26,7 @@ import cups
 import requests
 import usb.core
 from gpiozero import DigitalOutputDevice as DigitalPin
+from pystemd.systemd1 import Unit as SystemdUnit
 
 
 class App:
@@ -43,6 +44,9 @@ class App:
 			printer_intfc = DigitalPin(printer['gpio_pin'])
 			self.printer = Printer(printer_intfc, printer['id'], printer['control_pulse_length_s'])
 			self.timer = Timer(printer['timeout_s'])
+
+			self.cups_svc = SystemdUnit(b'cups.service')
+			self.cups_svc.load()
 
 			self.cupsc = cups.Connection()
 			if self.printer.state() == Printer.OFF:
@@ -134,24 +138,27 @@ class App:
 			time.sleep(poll_interval_s)
 
 			try:
-				""" Note:
-				This returns all jobs from all queues.
-				It works if there is only one printer in cups. Otherwise, use:
-				.getPrinterAttributes(<printer>, requested_attributes=['queued-job-count'])
-				"""
-				job_count = len(self.cupsc.getJobs())
-				printer_state = self.printer.state()
+				if self.cups_svc.Unit.ActiveState == b'active':
+					""" Note:
+					getJobs returns all jobs from all queues.
+					If there are multiple printers on the server, use this instead:
+					.getPrinterAttributes(self.settings['cups_queue'], requested_attributes=['queued-job-count'])
+					"""
+					job_count = len(self.cupsc.getJobs())
+					printer_state = self.printer.state()
+					self._update(job_count, printer_state)
 
 			# TODO: avoid endless notification
 			except cups.IPPError as ce:
 				status, description = ce.args
 				self.log(f'CUPS IPP Error: {status} {description}')
 				self.notify(f'CUPS IPP Error: {status} {description}')
+			except AttributeError as ae:
+				self.log(f'Attribute Error: {ae}')
+				self.notify(f'Attribute Error: {ae}')
 			except RuntimeError as re:
 				self.log(f'Runtime Error: {re}')
 				self.notify(f'Runtime Error: {re}')
-			else:
-				self._update(job_count, printer_state)
 
 
 class Printer:

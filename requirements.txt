@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Unlicense
 
 pycups
+pystemd
 pyusb
 requests
 
