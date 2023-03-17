@@ -125,7 +125,7 @@ class App:
 			webhook['params']['mensagem'] = str(message)
 			if __debug__:
 				print('Notifying via webhook... ', end='')
-			res = requests.get(webhook['url'], params=webhook['params'])
+			res = requests.get(webhook['url'], webhook['params'], timeout=webhook['timeout'])
 			if __debug__:
 				print('response:', res.text)
 
