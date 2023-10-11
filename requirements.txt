@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Unlicense
 
-pycups
+# PyCUPS needs a virtual environment, or be installed via apt python3-cups
+#pycups
+
 pystemd
 pyusb
 requests
