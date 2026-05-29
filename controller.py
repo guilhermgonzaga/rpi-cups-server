@@ -13,8 +13,8 @@ a Raspberry Pi, so tailor it to your needs.
 The printer was modified to turn on or off via a high pulse from the Pi.
 
 Note: the pycups documentation is quite poor, so the API was taken from
-      github.com/OpenPrinting/pycups/blob/v2.0.1/cupsmodule.c#L605
-      github.com/OpenPrinting/pycups/blob/v2.0.1/cupsconnection.c#L4745
+- github.com/OpenPrinting/pycups/blob/v2.0.1/cupsmodule.c#L605
+- github.com/OpenPrinting/pycups/blob/v2.0.1/cupsconnection.c#L4745
 """
 
 import json
@@ -95,6 +95,10 @@ class App:
 		elif self.timer.state == Timer.UNSET and printer_state != Printer.OFF:
 			self.timer.set()
 			_debug_print('Jobs done, timeout started')
+		elif self.timer.state == Timer.SET and printer_state == Printer.OFF:
+			self.timer.unset()
+			self.cupsc.disablePrinter(self.settings['cups_queue'])
+			_debug_print('No jobs, timeout canceled, printer off, queue disabled')
 		elif self.timer.state == Timer.FIRED:
 			self.timer.unset()
 			self.cupsc.disablePrinter(self.settings['cups_queue'])
@@ -180,6 +184,9 @@ class Printer:
 
 		if usb.core.find(idVendor=self._id[0], idProduct=self._id[1]):
 			self._state = Printer.READY
+		elif self._state == Printer.READY:
+			# Suppose manually turned off
+			self._state = Printer.OFF
 
 		return self._state
 
