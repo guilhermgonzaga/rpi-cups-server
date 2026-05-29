@@ -13,6 +13,6 @@
 	"webhook": {
 		"timeout": "<NUMBER> Seconds to wait for the server to send data before giving up",
 		"url": "<URL> a GET request will be sent by notify() with the parameters below",
-		"params": { /* Params to be encoded in the URL. */ }
+		"params": { /* Parameters to be encoded in the URL. */ }
 	}
 }

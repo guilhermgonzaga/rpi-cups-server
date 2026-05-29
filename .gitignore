@@ -2,3 +2,6 @@
 
 # This file may hold sensitive information; check out `settings_template.json`.
 settings.json
+
+# Python virtual environment
+venv

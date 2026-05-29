@@ -6,7 +6,7 @@
 # the CUPS server must be restarted, for which this command may be used:
 # systemctl restart cups.service
 #
-# Remember to update the following information (variables).
+# Remember to update the following variables.
 
 # Name of the CUPS queue/class
 printerQueue=HP_LaserJet_P1006
@@ -18,18 +18,23 @@ user=pi
 # Treat unset variables as errors when substituting
 set -o nounset
 
-### DEPENDENCIES
+### SYSTEM DEPENDENCIES
 
 apt update
 apt install -y libsystemd-dev cups libcups2-dev libxslt-dev hplip printer-driver-hpcups python3-pip
 
+### PYTHON DEPENDENCIES
+
+python3 -m venv venv
+source venv/bin/activate
 pip3 install -r requirements.txt
+deactivate
 
 ### PRINTER SETUP
 
 hp-setup --interactive --auto -x
 
-### CUPS CONFIG
+### CUPS SETTINGS
 
 usermod -a -G lpadmin "$user"
 lpadmin -p "$printerQueue" -o printer-error-policy=retry-current-job
